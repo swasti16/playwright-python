@@ -1,5 +1,6 @@
 # Environment — NEVER commit real keys
 .env
+auth*.json
 
 # Virtual environment
 venv/
@@ -24,6 +25,8 @@ coverage.xml
 *.swp
 *.swo
 
+# artifacts
+artifacts/
 
 # pip install -e . creates these
 *.egg-info/

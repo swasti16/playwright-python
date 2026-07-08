@@ -9,8 +9,8 @@ class BasePage:
     def navigate(self, url: str):
         self.page.goto(url)
 
-    def to_be_visible(self, locator):
-        expect(locator).to_be_visible()
+    def to_be_visible(self, locator, **kwargs):
+        expect(locator).to_be_visible(**kwargs)
 
     def click(self, locator: Locator):
         self.to_be_visible(locator)
