@@ -94,6 +94,7 @@ def prepare_artifacts():
 @pytest.fixture(scope="session")
 def playwright_instance():
     with sync_playwright() as p:
+        p.selectors.set_test_id_attribute("data-test")  # site convention differs from Playwright default
         yield p
 
 
@@ -246,13 +247,15 @@ def account_page(auth_page: Page):
 
     return account_page
 
+
 @pytest.fixture
-def home_page(page: Page):
-    home_page = HomePage(page)
+def home_page(auth_page: Page):
+    home_page = HomePage(auth_page)
 
-    home_page.navigate(Settings.BASE_URL)
+    with auth_page.expect_response(lambda r: "/products" in r.url and r.request.method == "QUERY" and r.ok):
+        home_page.navigate(Settings.BASE_URL)
 
-    expect(page.get_by_alt_text("Banner")).to_be_visible()
+    expect(auth_page.get_by_alt_text("Banner")).to_be_visible()
 
     return home_page
 

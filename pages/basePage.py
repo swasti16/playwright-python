@@ -25,3 +25,18 @@ class BasePage:
 
     def get_by_text(self, text: str = None, **kwargs):
         return self.page.get_by_text(text=text, **kwargs)
+
+    def _wait_for_response(self, action, endpoint, method):
+        """
+        Playwright's auto-waiting covers element actionability, not async
+        data fetches. This app re-fetches the product list from the API
+        on every search/sort/filter/paginate action — we must wait for
+        that specific network response before reading the DOM, or we
+        read stale/empty state. Avoids blind sleeps; only waits as long
+        as the actual request takes.
+        """
+        with self.page.expect_response(lambda r: endpoint in r.url and r.request.method == method and r.ok):
+            action()
+
+    def wait_for_products_response(self, action):
+        self._wait_for_response(action, "/products", "QUERY")
