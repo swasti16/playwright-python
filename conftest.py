@@ -15,6 +15,8 @@ from config.settings import Settings
 from pages.accountsPage import AccountPage
 from pages.homePage import HomePage
 from pages.loginPage import LoginPage
+from pages.productPage import ProductPage
+from utils.product_catalog import get_happy_path_product_ids, get_boundary_product_ids
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -52,25 +54,24 @@ def pytest_addoption(parser):
 
 
 def pytest_generate_tests(metafunc):
-    if "browser_name" not in metafunc.fixturenames:
-        return
+    if "browser_name" in metafunc.fixturenames:
+        browsers = [b.strip() for b in metafunc.config.getoption("--browser").split(",")]
+        valid = {"chromium", "firefox", "webkit"}
+        invalid = set(browsers) - valid
 
-    browsers = [browser.strip() for browser in metafunc.config.getoption("--browser").split(",")]
+        if invalid:
+            raise pytest.UsageError(f"Unsupported browser(s): {', '.join(invalid)}")
 
-    valid = {"chromium", "firefox", "webkit"}
+        metafunc.parametrize("browser_name", browsers, scope="session")
 
-    invalid = set(browsers) - valid
-
-    if invalid:
-        raise pytest.UsageError(
-            f"Unsupported browser(s): {', '.join(invalid)}"
-        )
-
-    metafunc.parametrize(
-        "browser_name",
-        browsers,
-        scope="session"
-    )
+    if "product_page" in metafunc.fixturenames:
+        if "happy_path" in metafunc.definition.keywords:
+            ids = get_happy_path_product_ids(count_per_category=2)
+            metafunc.parametrize("product_page", ids, indirect=True)
+        elif "boundary" in metafunc.definition.keywords:
+            boundary_map = get_boundary_product_ids()
+            ids = [v for v in boundary_map.values() if v]
+            metafunc.parametrize("product_page", ids, indirect=True)
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -185,7 +186,7 @@ def create_storage_state(browser: Browser, auth_file: str, credentials):
         login_page = LoginPage(page)
         login_page.navigate(Settings.BASE_URL)
         login_page.get_by_role("link", name="Sign in").click()
-        login_page.login(credentials["username"], credentials["password"])
+        login_page.login_and_wait_for_profile(credentials["username"], credentials["password"])
         login_page.to_be_visible(login_page.user_button(credentials["name"]), timeout=30000)
         context.storage_state(path=auth_file)
         if not Path(auth_file).is_file():
@@ -269,3 +270,19 @@ def pytest_runtest_makereport(item, call):
         return
 
     setattr(item, f"rep_{report.when}", report)
+
+@pytest.fixture
+def product_page(auth_page: Page, request):
+    """
+    Navigates directly to a product page by ID.
+    Indirect-parametrize with product_id via request.param.
+
+    Usage:
+        @pytest.mark.parametrize("product_page", ["01ABC..."], indirect=True)
+        def test_x(self, product_page): ...
+    """
+    product_id = request.param
+    prod_page = ProductPage(auth_page)
+    prod_page.navigate(f"{Settings.BASE_URL}/product/{product_id}")
+    expect(prod_page.product_name).to_be_visible()
+    return prod_page
