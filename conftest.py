@@ -1,7 +1,7 @@
 from pathlib import Path
 import os
 import shutil
-
+import allure
 import pytest
 from playwright.sync_api import (
     Browser,
@@ -138,6 +138,8 @@ def collect_artifacts(page: Page, context: BrowserContext, request, browser_name
         )
         try:
             page.screenshot(path=str(screenshot), full_page=True)
+            allure.attach.file(str(screenshot), name="Failure Screenshot",
+                               attachment_type=allure.attachment_type.PNG)
         except Exception as e:
             print(e)
 
@@ -270,6 +272,7 @@ def pytest_runtest_makereport(item, call):
         return
 
     setattr(item, f"rep_{report.when}", report)
+
 
 @pytest.fixture
 def product_page(auth_page: Page, request):

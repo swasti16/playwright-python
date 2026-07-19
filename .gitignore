@@ -27,6 +27,7 @@ coverage.xml
 
 # artifacts
 artifacts/
+allure-results/
 
 # pip install -e . creates these
 *.egg-info/

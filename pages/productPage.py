@@ -1,5 +1,6 @@
 from pages.basePage import BasePage
 from playwright.sync_api import expect
+import allure
 
 
 class ProductPage(BasePage):
@@ -23,6 +24,7 @@ class ProductPage(BasePage):
         rapid favorites clicks -- 201 then 409)."""
         expect(self.alert_toast).to_have_count(0, timeout=timeout)
 
+    @allure.step("Add product to cart")
     def add_to_cart(self) -> dict:
         self._wait_for_clean_toast_state()
         with self.page.expect_response(
@@ -36,6 +38,7 @@ class ProductPage(BasePage):
 
         return {"status": response.status, "toast_text": toast_text}
 
+    @allure.step("Add product to favorites")
     def add_to_favorites(self) -> dict:
         self._wait_for_clean_toast_state()
         with self.page.expect_response(

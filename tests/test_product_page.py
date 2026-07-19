@@ -1,5 +1,7 @@
 import pytest
 from pages.productPage import ProductPage
+import allure
+
 
 BUG_PRODUCTS = {
     "favorites_401": "01KX6C47BJBEXATVBP58NMCVA8",
@@ -12,6 +14,7 @@ class TestProductPageHappyPath:
     """Standard flow -- product_page auto-parametrized by pytest_generate_tests
     hook in conftest.py, sourced live from get_happy_path_product_ids()."""
 
+    @allure.severity(allure.severity_level.CRITICAL)
     @pytest.mark.smoke
     def test_add_to_cart_success(self, product_page: ProductPage):
         result = product_page.add_to_cart()
