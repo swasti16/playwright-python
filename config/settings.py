@@ -25,7 +25,6 @@ class Settings:
     # ------------------------------------------------------------------
     HEADLESS = os.getenv("HEADLESS", "true").lower() == "true"
     SLOW_MO = int(os.getenv("SLOW_MO", "0"))
-
     VIEWPORT = {
         "width": 1920,
         "height": 1080
@@ -33,6 +32,7 @@ class Settings:
 
     DEFAULT_TIMEOUT = int(os.getenv("DEFAULT_TIMEOUT", "10000"))
     AUTH_RETRY_COUNT = int(os.getenv("AUTH_RETRY_COUNT", "3"))
+    TOKEN_REFRESH_THRESHOLD_SECONDS = 240
 
     # ------------------------------------------------------------------
     # Artifacts

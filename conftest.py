@@ -10,13 +10,26 @@ from playwright.sync_api import (
     expect,
     sync_playwright,
 )
-
+import time
 from config.settings import Settings
 from pages.accountsPage import AccountPage
 from pages.homePage import HomePage
 from pages.loginPage import LoginPage
 from pages.productPage import ProductPage
 from utils.product_catalog import get_happy_path_product_ids, get_boundary_product_ids
+
+
+_AUTH_STATE: dict[str, float] = {}
+
+
+def ensure_fresh_auth(browser: Browser, auth_file: str, credentials: dict, worker_id: str):
+    """Re-authenticates and rewrites auth_file if the JWT is at or past
+    the refresh threshold. Call before creating any authenticated context."""
+    age = time.time() - _AUTH_STATE.get(worker_id, 0)
+    if age >= Settings.TOKEN_REFRESH_THRESHOLD_SECONDS:
+        print(f"\n[auth:{worker_id}] Token age {age:.0f}s >= {Settings.TOKEN_REFRESH_THRESHOLD_SECONDS}s -- refreshing...")
+        create_storage_state(browser, auth_file, credentials)
+        _AUTH_STATE[worker_id] = time.time()
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -209,11 +222,47 @@ def create_storage_state(browser: Browser, auth_file: str, credentials):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def create_auth_state(browser: Browser, auth_file: str, credentials):
+def cleanup_all_favorites(browser: Browser, auth_file, worker_id):
+    """
+    Session-scoped teardown-only sweep. Runs once per xdist worker, after
+    all tests in that worker finish. Deletes every favorite currently on
+    this worker's account -- catches orphans from skipped/crashed tests
+    that per-instance tracking would miss.
+    """
+    yield  # no setup -- pure teardown after this point
+    ensure_fresh_auth(browser, auth_file, credentials, worker_id)
+    context = browser.new_context(storage_state=auth_file)
+    page = context.new_page()
+    try:
+        # localStorage from storage_state only attaches once a page
+        # navigates to the matching origin -- must load BASE_URL first.
+        page.goto(Settings.BASE_URL)
+        headers = HomePage(page).get_auth_header()  # any BasePage subclass works
+
+        resp = context.request.get(f"{Settings.API_BASE_URL}/favorites", headers=headers)
+        favorites = resp.json() if resp.ok else []
+        print(f"\n[cleanup:{worker_id}] Found {len(favorites)} favorite(s) to sweep")
+
+        for fav in favorites:
+            fav_id = fav["id"]
+            del_resp = context.request.delete(
+                f"{Settings.API_BASE_URL}/favorites/{fav_id}", headers=headers
+            )
+            print(f"[cleanup:{worker_id}] DELETE favorite {fav_id} -> {del_resp.status}")
+    except Exception as e:
+        print(f"[cleanup:{worker_id}] Favorites sweep failed: {e}")
+    finally:
+        page.close()
+        context.close()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def create_auth_state(browser: Browser, auth_file: str, credentials, worker_id):
     for attempt in range(1, Settings.AUTH_RETRY_COUNT + 1):
         try:
             print(f"\nCreating auth state ({attempt}/{Settings.AUTH_RETRY_COUNT})...")
             create_storage_state(browser, auth_file, credentials)
+            _AUTH_STATE[worker_id] = time.time()   # <-- new line
             print("Auth state created successfully.")
             return
         except Exception as e:
@@ -224,7 +273,8 @@ def create_auth_state(browser: Browser, auth_file: str, credentials):
 
 
 @pytest.fixture
-def auth_context(browser: Browser, auth_file):
+def auth_context(browser: Browser, auth_file, credentials, worker_id):
+    ensure_fresh_auth(browser, auth_file, credentials, worker_id)
     context = browser.new_context(storage_state=auth_file)
     context.tracing.start(screenshots=True, snapshots=True, sources=True)
     yield context
@@ -286,5 +336,3 @@ def product_page(auth_page: Page, request):
         pytest.skip(f"Product {product_id} no longer resolves -- stale catalog reference (list/detail data drift)")
 
     yield prod_page
-
-    prod_page.cleanup()
