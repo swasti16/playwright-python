@@ -243,7 +243,7 @@ def auth_page(request, auth_context: BrowserContext, browser_name, worker_id):
 @pytest.fixture
 def account_page(auth_page: Page):
     account_page = AccountPage(auth_page)
-    account_page.page.pause()
+    # account_page.page.pause()
     account_page.navigate(Settings.ACCOUNTS_URL)
 
     expect(auth_page.get_by_role("heading", name="My account")).to_be_visible()
@@ -277,10 +277,14 @@ def pytest_runtest_makereport(item, call):
 @pytest.fixture
 def product_page(auth_page: Page, request):
     product_id = request.param
-    prod_page = ProductPage(auth_page)
+    prod_page = ProductPage(auth_page, product_id=product_id)
+    # prod_page.page.pause()
     prod_page.navigate(f"{Settings.BASE_URL}/product/{product_id}")
     try:
         expect(prod_page.product_name).to_be_visible(timeout=5000)
     except AssertionError:
         pytest.skip(f"Product {product_id} no longer resolves -- stale catalog reference (list/detail data drift)")
-    return prod_page
+
+    yield prod_page
+
+    prod_page.cleanup()

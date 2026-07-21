@@ -37,3 +37,9 @@ class BasePage:
 
     def wait_for_products_response(self, action):
         self.wait_for_response(action, "/products", method="QUERY")
+
+    def get_auth_header(self) -> dict:
+        """Extracts the JWT from localStorage for use in raw API calls
+        (e.g. teardown DELETE requests) that bypass UI interaction."""
+        token = self.page.evaluate("() => localStorage.getItem('auth-token')")
+        return {"Authorization": f"Bearer {token}"} if token else {}
