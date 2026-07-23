@@ -52,3 +52,15 @@ class ProductPage(BasePage):
         toast_text = self.alert_toast.text_content()
 
         return {"status": response.status, "toast_text": toast_text}
+
+    def get_product_name(self) -> str:
+        """Returns only the product name's own text, excluding nested
+        badges (eco-badge, and any future badge added to the h1) --
+        text_content() would concatenate badge text in (e.g. 'Wood Saw
+        ECO' instead of 'Wood Saw'), breaking exact-match lookups
+        elsewhere (e.g. CartPage._line_item)."""
+        return self.product_name.evaluate(
+            "el => Array.from(el.childNodes)"
+            ".filter(n => n.nodeType === Node.TEXT_NODE)"
+            ".map(n => n.textContent).join('').trim()"
+        )

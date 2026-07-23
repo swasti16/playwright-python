@@ -18,6 +18,7 @@ class Settings:
     BASE_URL = "https://practicesoftwaretesting.com"
     LOGIN_URL = f"{BASE_URL}/auth/login"
     ACCOUNTS_URL = f"{BASE_URL}/account"
+    CART_URL = f"{BASE_URL}/checkout"
     API_BASE_URL = "https://api.practicesoftwaretesting.com"
 
     # ------------------------------------------------------------------

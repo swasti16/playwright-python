@@ -16,6 +16,8 @@ from pages.accountsPage import AccountPage
 from pages.homePage import HomePage
 from pages.loginPage import LoginPage
 from pages.productPage import ProductPage
+from pages.cartPage import CartPage
+from components.navBar import NavBar
 from utils.product_catalog import get_happy_path_product_ids, get_boundary_product_ids
 
 
@@ -336,3 +338,18 @@ def product_page(auth_page: Page, request):
         pytest.skip(f"Product {product_id} no longer resolves -- stale catalog reference (list/detail data drift)")
 
     yield prod_page
+
+@pytest.fixture
+def cart_page(auth_page: Page):
+    """
+    Factory fixture -- returns a callable, not an eager page object,
+    because cart state must exist BEFORE navigating (add via ProductPage
+    first). Instantiates NavBar directly rather than depending on
+    HomePage, since the cart icon is a global layout element reachable
+    from any authenticated page (e.g. straight from ProductPage after
+    add_to_cart()).
+    """
+    def _open() -> CartPage:
+        NavBar(auth_page).cart_link.click()
+        return CartPage(auth_page)
+    return _open
