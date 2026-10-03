@@ -18,7 +18,7 @@ from pages.loginPage import LoginPage
 from pages.productPage import ProductPage
 from pages.cartPage import CartPage
 from components.navBar import NavBar
-from utils.product_catalog import get_happy_path_product_ids, get_boundary_product_ids
+from utils.product_catalog import get_happy_path_product_ids, get_boundary_product_ids, get_eco_product_id
 
 
 _AUTH_STATE: dict[str, float] = {}
@@ -86,6 +86,10 @@ def pytest_generate_tests(metafunc):
         elif "boundary" in metafunc.definition.keywords:
             boundary_map = get_boundary_product_ids()
             ids = [v for v in boundary_map.values() if v]
+            metafunc.parametrize("product_page", ids, indirect=True)
+        elif "eco" in metafunc.definition.keywords:
+            eco_id = get_eco_product_id()
+            ids = [eco_id] if eco_id else []
             metafunc.parametrize("product_page", ids, indirect=True)
 
 

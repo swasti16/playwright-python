@@ -101,6 +101,23 @@ def get_boundary_product_ids() -> dict[str, str]:
     return {k: v for k, v in result.items() if v and _product_exists(v)}
 
 
+def get_eco_product_id() -> str | None:
+    """Random validated in-stock eco-friendly product ID. Same date-seeded
+    rotation as get_happy_path_product_ids -- identical selection across
+    xdist workers within a day, rotates day-to-day."""
+    products = _fetch_all_products()
+    rng = random.Random(date.today().isoformat())
+
+    eco_ids = [p["id"] for p in products if p.get("is_eco_friendly") and p["in_stock"]]
+    rng.shuffle(eco_ids)
+
+    for candidate in eco_ids:
+        if _product_exists(candidate):
+            return candidate
+
+    print("[product_catalog] No live eco-friendly product found")
+    return None
+
 # TEMP DEBUG — add at the bottom of the file, run directly: python utils/product_catalog.py
 if __name__ == "__main__":
     products = _fetch_all_products()
